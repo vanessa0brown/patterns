@@ -5,12 +5,17 @@ import (
 	"time"
 )
 
-func Promise(task func() int) chan int {
-	resultChan := make(chan int, 1)
+type Result struct {
+	value int
+	err   error
+}
+
+func Promise(task func() (int, error)) chan Result {
+	resultChan := make(chan Result, 1)
 
 	go func() {
-		result := task()
-		resultChan <- result
+		value, err := task()
+		resultChan <- Result{value, err}
 		close(resultChan)
 	}()
 
@@ -18,17 +23,20 @@ func Promise(task func() int) chan int {
 }
 
 func main() {
-	longRunningTask := func() int {
+	taskWithError := func() (int, error) {
 		time.Sleep(2 * time.Second)
-		return 42
+		//return 0, errors.New("Something went wrong")
+		return 42, nil
 	}
 
-	future := Promise(longRunningTask)
+	future := Promise(taskWithError)
 
 	fmt.Println("Start task")
 
 	result := <-future
-
-	fmt.Println("Finish task")
-	fmt.Println("Result:", result)
+	if result.err != nil {
+		fmt.Println("Error: ", result.err)
+	} else {
+		fmt.Println("Result: ", result.value)
+	}
 }
