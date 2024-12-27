@@ -1,11 +1,8 @@
 package main
 
 import (
-	"context"
 	"errors"
-	"log"
-
-	"golang.org/x/sync/errgroup"
+	"fmt"
 )
 
 type Result struct {
@@ -14,25 +11,18 @@ type Result struct {
 }
 
 func main() {
-	g, _ := errgroup.WithContext(context.Background())
 	input := []int{1, 2, 3, 4, 5}
 
-	inputCh := generator(input)
+	resultCh := make(chan Result)
 
-	for data := range inputCh {
-		data := data
-		g.Go(func() error {
-			_, err := CallDataBase(data)
-			if err != nil {
-				return err
-			} else {
-				return nil
-			}
-		})
-	}
+	go consumer(generator(input), resultCh)
 
-	if err := g.Wait(); err != nil {
-		log.Println("Ошибка: ", err)
+	for res := range resultCh {
+		if res.err != nil {
+			fmt.Println("Ошибка", res.err)
+		} else {
+			fmt.Println("Результат:", res.data)
+		}
 	}
 }
 
@@ -60,9 +50,5 @@ func consumer(inputCh chan int, resultCh chan Result) {
 }
 
 func CallDataBase(data int) (int, error) {
-	if data == 3 {
-		return data, errors.New("Ошибка обращения к бд")
-	} else {
-		return data, nil
-	}
+	return data, errors.New("Ошибка обращения к бд")
 }
